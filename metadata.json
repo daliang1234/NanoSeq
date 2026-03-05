@@ -1,0 +1,5 @@
+{
+  "name": "NanoSeq Demux & Variant Caller",
+  "description": "A web-based tool for demultiplexing Nanopore sequencing reads using 96-well plate barcodes and performing variant calling against a reference sequence.",
+  "requestFramePermissions": []
+}
