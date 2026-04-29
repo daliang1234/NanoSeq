@@ -124,8 +124,11 @@ export default function App() {
           }
         }
         
-        if (variantLabel || results.wellStats[wellId]?.readCount > 0) {
-           csvContent += `${wellId},${variantLabel || 'WT'}\n`;
+        const readCount = results.wellStats[wellId]?.readCount || 0;
+        if (readCount === 0) {
+          csvContent += `${wellId},empty\n`;
+        } else {
+          csvContent += `${wellId},${variantLabel || 'WT'}\n`;
         }
       }
     }
