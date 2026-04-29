@@ -98,29 +98,39 @@ export default function App() {
         const wellId = `${row}${col}`;
         const wellVariants = results.variants[wellId] || [];
         
-        // Filter for non-synonymous mutations and sort by sequence position
-        const nonSynonymous = wellVariants
-          .filter((v: any) => v.refAA !== v.altAA)
-          .sort((a: any, b: any) => a.aaPosition - b.aaPosition);
+        // Sort variants by sequence position, including synonymous mutations
+        const sortedVariants = [...wellVariants].sort((a: any, b: any) => a.aaPosition - b.aaPosition);
         
+        const allPositions = new Set(sortedVariants.map((v: any) => v.aaPosition));
+        targetPosSet.forEach((p: number) => allPositions.add(p));
+
+        const combinedMutations = Array.from(allPositions).sort((a: any, b: any) => a - b).map(pos => {
+          const variant = sortedVariants.find((v: any) => v.aaPosition === pos);
+          if (variant) {
+            return { aaPosition: pos, refAA: variant.refAA, altAA: variant.altAA };
+          } else {
+            const aa = refProtein[pos - 1] || '?';
+            return { aaPosition: pos, refAA: aa, altAA: aa };
+          }
+        });
+
         let variantLabel = '';
         if (variantFormat === 'format4') {
-          const hasOutsideMutation = nonSynonymous.some((v: any) => !targetPosSet.has(v.aaPosition));
+          const hasOutsideMutation = sortedVariants.some((v: any) => !targetPosSet.has(v.aaPosition));
           if (hasOutsideMutation) {
             variantLabel = 'fail';
           } else {
             const sortedTargetPos = Array.from(targetPosSet).sort((a, b) => a - b);
             variantLabel = sortedTargetPos.map(pos => {
-              const variant = nonSynonymous.find((v: any) => v.aaPosition === pos);
-              if (variant) return variant.altAA;
-              return refProtein[pos - 1] || '?';
+              const variant = combinedMutations.find((v: any) => v.aaPosition === pos);
+              return variant ? variant.altAA : '?';
             }).join('');
           }
-        } else if (nonSynonymous.length > 0) {
+        } else if (combinedMutations.length > 0) {
           if (variantFormat === 'format1') {
-            variantLabel = nonSynonymous.map((v: any) => `${v.refAA}${v.aaPosition}${v.altAA}`).join('/');
+            variantLabel = combinedMutations.map((v: any) => `${v.refAA}${v.aaPosition}${v.altAA}`).join('/');
           } else if (variantFormat === 'format3') {
-            variantLabel = nonSynonymous.map((v: any) => `${v.aaPosition}${v.altAA}`).join('/');
+            variantLabel = combinedMutations.map((v: any) => `${v.aaPosition}${v.altAA}`).join('/');
           }
         }
         
@@ -264,6 +274,17 @@ export default function App() {
                       <option value="format3">Format: 2L</option>
                       <option value="format4">Format: Specific Pos</option>
                     </select>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-stone-500">Target Pos:</span>
+                      <input
+                        type="text"
+                        value={specificPositions}
+                        onChange={(e) => setSpecificPositions(e.target.value)}
+                        placeholder="e.g. 305-309"
+                        className="text-sm border border-stone-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-28"
+                        title="Enter positions or ranges, e.g. 305-309, 312"
+                      />
+                    </div>
                     {(variantFormat === 'format1' || variantFormat === 'format3') && (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-stone-500">Max:</span>
@@ -277,16 +298,6 @@ export default function App() {
                           title="Maximum number of variants to display in well"
                         />
                       </div>
-                    )}
-                    {variantFormat === 'format4' && (
-                      <input
-                        type="text"
-                        value={specificPositions}
-                        onChange={(e) => setSpecificPositions(e.target.value)}
-                        placeholder="e.g. 305-309"
-                        className="text-sm border border-stone-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-32"
-                        title="Enter positions or ranges, e.g. 305-309, 312"
-                      />
                     )}
                   </div>
                   <button

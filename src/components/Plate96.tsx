@@ -27,7 +27,7 @@ export function Plate96({
   refProtein = '' 
 }: Plate96Props) {
   const maxReads = Math.max(...Object.values(data).map(w => w.readCount), 1);
-  const targetPositions = variantFormat === 'format4' ? parseRange(specificPositions) : new Set<number>();
+  const targetPositions = parseRange(specificPositions);
 
   return (
     <div className="flex flex-col items-center overflow-x-auto w-full">
@@ -53,12 +53,23 @@ export function Plate96({
                 const readCount = wellData?.readCount || 0;
                 const wellVariants = variants?.[wellId] || [];
                 
-                // Filter for non-synonymous mutations and sort by sequence position
-                const nonSynonymous = wellVariants
-                  .filter(v => v.refAA !== v.altAA)
-                  .sort((a, b) => a.aaPosition - b.aaPosition);
+                // Sort variants by sequence position, including synonymous mutations
+                const sortedVariants = [...wellVariants].sort((a, b) => a.aaPosition - b.aaPosition);
+                
+                const allPositions = new Set(sortedVariants.map((v: any) => v.aaPosition));
+                targetPositions.forEach((p: number) => allPositions.add(p));
+
+                const combinedMutations = Array.from(allPositions).sort((a: any, b: any) => a - b).map(pos => {
+                  const variant = sortedVariants.find((v: any) => v.aaPosition === pos);
+                  if (variant) {
+                    return { aaPosition: pos, refAA: variant.refAA, altAA: variant.altAA };
+                  } else {
+                    const aa = refProtein[pos - 1] || '?';
+                    return { aaPosition: pos, refAA: aa, altAA: aa };
+                  }
+                });
                   
-                const hasVariants = nonSynonymous.length > 0;
+                const hasVariants = combinedMutations.length > 0;
                 
                 // Calculate color intensity based on read count
                 const intensity = readCount > 0 ? Math.max(0.2, readCount / maxReads) : 0;
@@ -66,34 +77,32 @@ export function Plate96({
                 let variantLabel = '';
                 let isFail = false;
                 
-                if (variantFormat === 'format4' && readCount > 0) {
-                  const outsideMutations = nonSynonymous.filter(v => !targetPositions.has(v.aaPosition));
-                  if (outsideMutations.length > 0) {
-                    variantLabel = 'fail';
-                    isFail = true;
-                  } else if (targetPositions.size > 0) {
-                    const sortedPositions = Array.from(targetPositions).sort((a, b) => a - b);
-                    let seq = '';
-                    for (const pos of sortedPositions) {
-                      const mut = nonSynonymous.find(v => v.aaPosition === pos);
-                      if (mut) {
-                        seq += mut.altAA;
-                      } else {
-                        seq += refProtein[pos - 1] || '?';
+                if (readCount > 0) {
+                  if (variantFormat === 'format4') {
+                    const outsideMutations = sortedVariants.filter(v => !targetPositions.has(v.aaPosition));
+                    if (outsideMutations.length > 0) {
+                      variantLabel = 'fail';
+                      isFail = true;
+                    } else if (targetPositions.size > 0) {
+                      const sortedPositions = Array.from(targetPositions).sort((a, b) => a - b);
+                      let seq = '';
+                      for (const pos of sortedPositions) {
+                        const mut = combinedMutations.find(v => v.aaPosition === pos);
+                        seq += mut ? mut.altAA : '?';
                       }
+                      variantLabel = seq;
                     }
-                    variantLabel = seq;
-                  }
-                } else if (hasVariants) {
-                  const displayVariants = nonSynonymous.slice(0, maxDisplayVariants);
-                  const hasMore = nonSynonymous.length > maxDisplayVariants;
-                  
-                  if (variantFormat === 'format1') {
-                    variantLabel = displayVariants.map(v => `${v.refAA}${v.aaPosition}${v.altAA}`).join('\n');
-                    if (hasMore) variantLabel += '\n...';
-                  } else if (variantFormat === 'format3') {
-                    variantLabel = displayVariants.map(v => `${v.aaPosition}${v.altAA}`).join('\n');
-                    if (hasMore) variantLabel += '\n...';
+                  } else if (hasVariants) {
+                    const displayVariants = combinedMutations.slice(0, maxDisplayVariants);
+                    const hasMore = combinedMutations.length > maxDisplayVariants;
+                    
+                    if (variantFormat === 'format1') {
+                      variantLabel = displayVariants.map(v => `${v.refAA}${v.aaPosition}${v.altAA}`).join('\n');
+                      if (hasMore) variantLabel += '\n...';
+                    } else if (variantFormat === 'format3') {
+                      variantLabel = displayVariants.map(v => `${v.aaPosition}${v.altAA}`).join('\n');
+                      if (hasMore) variantLabel += '\n...';
+                    }
                   }
                 }
                 
@@ -110,7 +119,7 @@ export function Plate96({
                     style={{
                       backgroundColor: readCount > 0 && !isFail ? `rgba(16, 185, 129, ${intensity})` : undefined
                     }}
-                    title={`${wellId}: ${readCount} reads${hasVariants ? ` | ${nonSynonymous.length} variants` : ''}`}
+                    title={`${wellId}: ${readCount} reads${hasVariants ? ` | ${sortedVariants.length} variants` : ''}`}
                   >
                     {variantLabel && (
                       <span className={cn(
