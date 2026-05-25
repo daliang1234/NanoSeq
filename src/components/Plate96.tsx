@@ -32,23 +32,25 @@ export function Plate96({
   return (
     <div className="flex flex-col items-center overflow-x-auto w-full">
       <div className="flex flex-col items-start min-w-max">
-        <div className="grid grid-cols-[auto_repeat(12,1fr)] gap-1.5 mb-4">
-          {/* Top Header */}
-          <div className="w-10 h-10"></div>
-          {cols.map(col => (
-            <div key={col} className="w-10 h-10 flex items-center justify-center font-mono text-sm text-gray-500">
-              {col}
-            </div>
-          ))}
-
-          {/* Rows */}
-          {rows.map(row => (
-            <React.Fragment key={row}>
-              <div className="w-10 h-10 flex items-center justify-center font-mono text-sm text-gray-500">
-                {row}
-              </div>
-              {cols.map(col => {
-                const wellId = `${row}${col}`;
+        <table className="border-separate mb-4 select-text" style={{ borderSpacing: '6px' }}>
+          <thead>
+            <tr>
+              <th className="w-10 h-10 p-0 font-normal">&nbsp;</th>
+              {cols.map(col => (
+                <th key={col} className="w-10 h-10 p-0 align-middle text-center font-mono text-sm text-gray-500 font-normal">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row}>
+                <th className="w-10 h-10 p-0 align-middle text-center font-mono text-sm text-gray-500 font-normal">
+                  {row}
+                </th>
+                {cols.map(col => {
+                  const wellId = `${row}${col}`;
                 const wellData = data[wellId];
                 const readCount = wellData?.readCount || 0;
                 const wellVariants = variants?.[wellId] || [];
@@ -107,34 +109,36 @@ export function Plate96({
                 }
                 
                 return (
-                  <button
-                    key={wellId}
-                    onClick={() => onWellClick(wellId)}
-                    className={cn(
-                      "w-10 h-10 rounded-md border border-gray-200 flex items-center justify-center transition-all relative",
-                      "hover:ring-2 hover:ring-indigo-400 hover:scale-110",
-                      selectedWell === wellId ? "ring-2 ring-indigo-600 shadow-md" : "",
-                      readCount === 0 ? "bg-white" : (isFail ? "bg-rose-100" : "bg-emerald-500")
-                    )}
-                    style={{
-                      backgroundColor: readCount > 0 && !isFail ? `rgba(16, 185, 129, ${intensity})` : undefined
-                    }}
-                    title={`${wellId}: ${readCount} reads${hasVariants ? ` | ${sortedVariants.length} variants` : ''}`}
-                  >
-                    {variantLabel && (
-                      <span className={cn(
-                        "text-[10px] font-bold leading-tight text-center drop-shadow-sm whitespace-pre-wrap z-10",
-                        isFail ? "text-rose-600" : "text-stone-900"
-                      )}>
-                        {variantLabel}
-                      </span>
-                    )}
-                  </button>
+                  <td key={wellId} className="p-0">
+                    <div
+                      onClick={() => onWellClick(wellId)}
+                      className={cn(
+                        "w-10 h-10 rounded-md border border-gray-200 flex items-center justify-center transition-all relative cursor-pointer select-text",
+                        "hover:ring-2 hover:ring-indigo-400 hover:scale-110",
+                        selectedWell === wellId ? "ring-2 ring-indigo-600 shadow-md" : "",
+                        readCount === 0 ? "bg-white" : (isFail ? "bg-rose-100" : "bg-emerald-500")
+                      )}
+                      style={{
+                        backgroundColor: readCount > 0 && !isFail ? `rgba(16, 185, 129, ${intensity})` : undefined
+                      }}
+                      title={`${wellId}: ${readCount} reads${hasVariants ? ` | ${sortedVariants.length} variants` : ''}`}
+                    >
+                      {variantLabel && (
+                        <span className={cn(
+                          "text-[10px] font-bold leading-tight text-center drop-shadow-sm whitespace-pre-wrap z-10",
+                          isFail ? "text-rose-600" : "text-stone-900"
+                        )}>
+                          {variantLabel}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                 );
               })}
-            </React.Fragment>
-          ))}
-        </div>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
         {/* Depth Indicator - Horizontal */}
         <div className="flex flex-col gap-2 mb-6 ml-[46px]" style={{ width: 'calc(100% - 46px)' }}>
